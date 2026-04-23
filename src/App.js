@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-// Importação da conexão com o banco
 import { db } from "./firebaseConfig"; 
 import { 
   collection, 
@@ -11,7 +10,7 @@ import {
   orderBy 
 } from "firebase/firestore";
 
-// ── Paleta ──────────────────────────────────────
+// ── Paleta de Cores Original ────────────────────
 const C = {
   azulEscuro: "#42567b",
   azulMedio:  "#7a93b8",
@@ -25,7 +24,7 @@ const C = {
 
 const ADMIN_PASS = "EL2025"; 
 
-// ── Ícones inline ───────────────────────────────
+// ── Ícones ──────────────────────────────────────
 const IcoCheck   = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8L6.5 11.5L13 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 const IcoX       = () => <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>;
 const IcoArrow   = () => <svg width="16" height="10" viewBox="0 0 16 10" fill="none"><path d="M1 1L8 8L15 1" stroke={C.azulClaro} strokeWidth="1.4" strokeLinecap="round"/></svg>;
@@ -35,7 +34,7 @@ const IcoUsers   = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="n
 const IcoLock    = () => <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.3"/><path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><circle cx="8" cy="10.5" r="1" fill="currentColor"/></svg>;
 
 // ════════════════════════════════════════════════
-// TELA: CONFIRMAÇÃO (pública)
+// TELA: CONFIRMAÇÃO
 // ════════════════════════════════════════════════
 function TelaConvidado({ onConfirmar }) {
   const [nome, setNome] = useState("");
@@ -45,15 +44,10 @@ function TelaConvidado({ onConfirmar }) {
   const [enviado, setEnviado] = useState(false);
   const [nomeEnviado, setNomeEnviado] = useState("");
 
-  function validar() {
+  async function confirmar() {
     const e = {};
     if (!nome.trim()) e.nome = true;
     if (!presenca) e.presenca = true;
-    return e;
-  }
-
-  async function confirmar() {
-    const e = validar();
     if (Object.keys(e).length) { setErros(e); return; }
 
     const registro = {
@@ -68,9 +62,7 @@ function TelaConvidado({ onConfirmar }) {
       await onConfirmar(registro);
       setNomeEnviado(nome.trim());
       setEnviado(true);
-    } catch (err) {
-      alert("Erro ao enviar. Tente novamente.");
-    }
+    } catch (err) { alert("Erro ao enviar. Tente novamente."); }
   }
 
   if (enviado) {
@@ -119,7 +111,7 @@ function TelaConvidado({ onConfirmar }) {
 
       {presenca && (
         <div style={s.campo}>
-          <label style={s.label}>Mensagem para os noivos</label>
+          <label style={s.label}>Mensagem para os noivos <span style={{ opacity: .5, textTransform: "none" }}>(opcional)</span></label>
           <input
             style={s.input}
             value={mensagem}
@@ -143,11 +135,6 @@ function TelaAdmin({ convidados, onRemover }) {
   const [erroSenha, setErroSenha] = useState(false);
   const [filtro, setFiltro] = useState("todos");
 
-  function entrar() {
-    if (senha === ADMIN_PASS) { setAutenticado(true); }
-    else { setErroSenha(true); setTimeout(() => setErroSenha(false), 1500); }
-  }
-
   if (!autenticado) {
     return (
       <div style={s.loginWrap}>
@@ -158,50 +145,35 @@ function TelaAdmin({ convidados, onRemover }) {
           style={{ ...s.input, ...(erroSenha ? s.inputErro : {}), maxWidth: 260, textAlign: "center" }}
           value={senha}
           onChange={e => setSenha(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && entrar()}
+          onKeyDown={e => e.key === "Enter" && (senha === ADMIN_PASS ? setAutenticado(true) : setErroSenha(true))}
           placeholder="Senha do Painel"
         />
-        <button style={{ ...s.btnEnviar, marginTop: 14, maxWidth: 260 }} onClick={entrar}>Entrar</button>
+        <button style={{ ...s.btnEnviar, marginTop: 14, maxWidth: 260 }} onClick={() => senha === ADMIN_PASS ? setAutenticado(true) : setErroSenha(true)}>Entrar</button>
       </div>
     );
   }
 
-  const confirmados = convidados.filter(c => c.presenca === "sim");
-  const recusados   = convidados.filter(c => c.presenca === "nao");
-  const listagem = filtro === "sim" ? confirmados : filtro === "nao" ? recusados : convidados;
+  const listagem = convidados.filter(c => filtro === "todos" ? true : c.presenca === filtro);
 
   return (
     <div>
       <div style={s.resumoGrid}>
-        <div style={s.resumoCard}>
-          <span style={{ ...s.resumoNum, color: C.azulEscuro }}>{confirmados.length}</span>
-          <span style={s.resumoLabel}>Confirmados</span>
-        </div>
-        <div style={s.resumoCard}>
-          <span style={{ ...s.resumoNum, color: C.suave }}>{recusados.length}</span>
-          <span style={s.resumoLabel}>Ausentes</span>
-        </div>
-        <div style={s.resumoCard}>
-          <span style={{ ...s.resumoNum, color: C.azulMedio }}>{convidados.length}</span>
-          <span style={s.resumoLabel}>Total</span>
-        </div>
+        <div style={s.resumoCard}><span style={s.resumoNum}>{convidados.filter(c=>c.presenca==="sim").length}</span><span style={s.resumoLabel}>Sim</span></div>
+        <div style={s.resumoCard}><span style={s.resumoNum}>{convidados.filter(c=>c.presenca==="nao").length}</span><span style={s.resumoLabel}>Não</span></div>
+        <div style={s.resumoCard}><span style={s.resumoNum}>{convidados.length}</span><span style={s.resumoLabel}>Total</span></div>
       </div>
-
       <div style={s.filtros}>
         {["todos", "sim", "nao"].map(v => (
-          <button key={v} style={{ ...s.filtroBtn, ...(filtro === v ? s.filtroBtnAtivo : {}) }} onClick={() => setFiltro(v)}>
-            {v === "todos" ? "Todos" : v === "sim" ? "Sim" : "Não"}
-          </button>
+          <button key={v} style={{ ...s.filtroBtn, ...(filtro === v ? s.filtroBtnAtivo : {}) }} onClick={() => setFiltro(v)}>{v.toUpperCase()}</button>
         ))}
       </div>
-
       <div style={s.listaAdmin}>
         {listagem.map(c => (
           <div key={c.id} style={s.itemAdmin}>
-            <div style={s.itemLeft}>
-              <div style={s.itemNome}>{c.nome}</div>
+            <div>
+              <div style={s.itemNome}>{c.nome} {c.presenca === "sim" ? "✓" : "✕"}</div>
               <div style={s.itemMeta}>{c.hora}</div>
-              {c.mensagem && <div style={s.itemMsg}>{c.mensagem}</div>}
+              {c.mensagem && <div style={s.itemMsg}>"{c.mensagem}"</div>}
             </div>
             <button style={s.btnRemover} onClick={() => onRemover(c.id)}><IcoTrash /></button>
           </div>
@@ -212,135 +184,133 @@ function TelaAdmin({ convidados, onRemover }) {
 }
 
 // ════════════════════════════════════════════════
-// APP PRINCIPAL (FIREBASE CONNECTED)
+// APP PRINCIPAL
 // ════════════════════════════════════════════════
 export default function App() {
   const [tela, setTela] = useState("rsvp");
   const [convidados, setConvidados] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // Carregar dados do Firebase ao abrir
   useEffect(() => {
-    const buscarDados = async () => {
-      try {
-        const q = query(collection(db, "confirmacoes"), orderBy("timestamp", "desc"));
-        const snapshot = await getDocs(q);
-        const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setConvidados(lista);
-      } catch (e) {
-        console.error("Erro ao carregar:", e);
-      } finally {
-        setCarregando(false);
-      }
+    const carregar = async () => {
+      const q = query(collection(db, "confirmacoes"), orderBy("timestamp", "desc"));
+      const snap = await getDocs(q);
+      setConvidados(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setCarregando(false);
     };
-    buscarDados();
+    carregar();
   }, []);
 
-  // Salvar no Firebase
-  const handleConfirmar = async (registro) => {
-    try {
-      const docRef = await addDoc(collection(db, "confirmacoes"), registro);
-      setConvidados([{ id: docRef.id, ...registro }, ...convidados]);
-    } catch (e) {
-      console.error("Erro ao salvar:", e);
-      throw e;
-    }
+  const handleConfirmar = async (reg) => {
+    const docRef = await addDoc(collection(db, "confirmacoes"), reg);
+    setConvidados([{ id: docRef.id, ...reg }, ...convidados]);
   };
 
-  // Remover do Firebase
   const handleRemover = async (id) => {
-    if (!window.confirm("Remover esta confirmação?")) return;
-    try {
+    if (window.confirm("Remover?")) {
       await deleteDoc(doc(db, "confirmacoes", id));
       setConvidados(convidados.filter(c => c.id !== id));
-    } catch (e) {
-      console.error("Erro ao remover:", e);
     }
   };
 
   return (
     <div style={s.page}>
       <section style={s.hero}>
+        {["tl","tr","bl","br"].map(p => <div key={p} style={{...s.corner, ...s[`corner_${p}`]}}/>)}
+        <div style={s.heroOverlay}/>
         <div style={s.heroContent}>
           <div style={s.monoWrap}>
             <div style={s.anel}/>
-            <svg viewBox="0 0 200 200" fill="none" style={{ width: "100%", height: "100%" }}>
+            <svg viewBox="0 0 200 200" fill="none" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 8px 32px rgba(66,86,123,.18))" }}>
               <circle cx="100" cy="100" r="96" fill="white" stroke="#b5c2d5" strokeWidth="1"/>
               <text x="34" y="127" fontFamily="Georgia, serif" fontSize="82" fill="#42567b">E</text>
               <text x="83" y="120" fontFamily="Georgia, serif" fontSize="36" fontStyle="italic" fill="#b5c2d5">e</text>
               <text x="106" y="127" fontFamily="Georgia, serif" fontSize="82" fill="#42567b">L</text>
             </svg>
           </div>
-          <h1 style={s.nomes}>Erica <em style={{ color: C.azulMedio }}>&</em> Leandreson</h1>
+          <h1 style={s.nomes}>Erica <em style={{ color: C.azulMedio, fontStyle: "italic", fontSize: "0.6em" }}>&</em> Leandreson</h1>
           <p style={s.subtitulo}>Coríntios 13:13</p>
-          <p style={s.tagData}>◆ Confirme sua presença ◆</p>
+          <div style={s.tagLinha}>
+            <span style={s.tagLinha_linha}/><p style={s.tagLinha_txt}>Você está convidado</p><span style={s.tagLinha_linha}/>
+          </div>
+          <p style={s.tagData}>◆ Confirme sua presença abaixo ◆</p>
+          <button style={s.setaBaixo} onClick={() => document.getElementById("rsvp-sec").scrollIntoView({ behavior: "smooth" })}>
+            <p style={s.setaBaixoTxt}>rsvp</p><IcoArrow />
+          </button>
         </div>
       </section>
 
       <section id="rsvp-sec" style={s.secaoForm}>
         <div style={s.abas}>
-          <button style={{ ...s.aba, ...(tela === "rsvp" ? s.abaAtiva : {}) }} onClick={() => setTela("rsvp")}>Confirmar</button>
-          <button style={{ ...s.aba, ...(tela === "admin" ? s.abaAtiva : {}) }} onClick={() => setTela("admin")}>Painel</button>
+          <button style={{ ...s.aba, ...(tela === "rsvp" ? s.abaAtiva : {}) }} onClick={() => setTela("rsvp")}>Confirmar Presença</button>
+          <button style={{ ...s.aba, ...(tela === "admin" ? s.abaAtiva : {}) }} onClick={() => setTela("admin")}><IcoUsers /> Painel</button>
         </div>
-
+        <div style={s.divisor}><span style={s.divisorLinha}/><IcoStar /><span style={s.divisorLinha}/></div>
         <div style={s.formCard}>
-          {carregando 
-            ? <p style={{textAlign:'center', color:C.suave}}>Carregando...</p>
-            : tela === "rsvp" 
-              ? <TelaConvidado onConfirmar={handleConfirmar}/> 
-              : <TelaAdmin convidados={convidados} onRemover={handleRemover}/>
-          }
+          {carregando ? <p>Carregando...</p> : tela === "rsvp" ? <TelaConvidado onConfirmar={handleConfirmar}/> : <TelaAdmin convidados={convidados} onRemover={handleRemover}/>}
         </div>
       </section>
 
-      <footer style={s.footer}>E & L — Com amor, aguardamos você</footer>
-      
-      <style>{`
-        @keyframes girar { to { transform: rotate(360deg); } }
-        body { margin: 0; padding: 0; }
-      `}</style>
+      <footer style={s.footer}><strong>E & L — Erica & Leandreson</strong><br/>Com amor, aguardamos sua presença</footer>
+      <style>{`@keyframes girar { to { transform: rotate(360deg); } } body { margin: 0; }`}</style>
     </div>
   );
 }
 
-// ── Estilos (Simplificados para o exemplo) ──
+// ── Estilos Finais (Design Original Restaurado) ──
 const s = {
-  page: { fontFamily: "Georgia, serif", background: C.fundo, minHeight: "100vh" },
-  hero: { minHeight: "80vh", display: "flex", justifyContent: "center", alignItems: "center", textAlign: "center" },
-  monoWrap: { position: "relative", width: 160, height: 160, margin: "0 auto 24px" },
-  anel: { position: "absolute", inset: -10, borderRadius: "50%", border: "1px solid rgba(181,194,213,.4)", animation: "girar 20s linear infinite" },
-  nomes: { fontSize: "3rem", color: C.azulEscuro, margin: 0 },
-  subtitulo: { fontStyle: "italic", color: C.azulMedio, margin: "8px 0" },
-  tagData: { fontSize: 10, letterSpacing: 3, color: C.suave, textTransform: "uppercase" },
-  secaoForm: { padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", background: C.creme },
+  page: { fontFamily: "'Georgia', serif", background: C.fundo, minHeight: "100vh", color: C.texto },
+  hero: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", padding: "60px 24px", background: C.fundo },
+  heroOverlay: { position: "absolute", inset: 0, backgroundImage: "repeating-linear-gradient(-45deg, transparent, transparent 28px, rgba(181,194,213,.1) 28px, rgba(181,194,213,.1) 29px)", pointerEvents: "none" },
+  corner: { position: "absolute", width: 80, height: 80, borderColor: C.azulClaro, borderStyle: "solid", opacity: .5 },
+  corner_tl: { top: 24, left: 24, borderWidth: "1px 0 0 1px" },
+  corner_tr: { top: 24, right: 24, borderWidth: "1px 1px 0 0" },
+  corner_bl: { bottom: 24, left: 24, borderWidth: "0 0 1px 1px" },
+  corner_br: { bottom: 24, right: 24, borderWidth: "0 1px 1px 0" },
+  heroContent: { position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" },
+  monoWrap: { position: "relative", width: 190, height: 190, marginBottom: 36 },
+  anel: { position: "absolute", inset: -16, borderRadius: "50%", border: `1px solid rgba(181,194,213,.5)`, animation: "girar 30s linear infinite" },
+  nomes: { fontSize: "clamp(2.5rem, 7vw, 4rem)", fontWeight: 300, color: C.azulEscuro, margin: 0 },
+  subtitulo: { fontStyle: "italic", fontSize: 18, color: C.azulMedio, marginTop: 10 },
+  tagLinha: { display: "flex", alignItems: "center", gap: 12, margin: "30px 0" },
+  tagLinha_linha: { width: 40, height: 1, background: C.azulMedio, opacity: 0.5 },
+  tagLinha_txt: { fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: C.azulMedio },
+  tagData: { fontSize: 11, letterSpacing: 4, textTransform: "uppercase", color: C.suave },
+  setaBaixo: { marginTop: 40, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
+  setaBaixoTxt: { fontSize: 10, letterSpacing: 3, color: C.suave, textTransform: "uppercase" },
+  secaoForm: { background: C.creme, padding: "80px 20px", display: "flex", flexDirection: "column", alignItems: "center" },
   abas: { display: "flex", gap: 10, marginBottom: 30 },
-  aba: { padding: "10px 20px", border: "1px solid #b5c2d5", background: "none", cursor: "pointer", borderRadius: 4, color: C.suave },
+  aba: { background: "none", border: `1px solid #b5c2d5`, padding: "10px 20px", cursor: "pointer", color: C.suave, fontFamily: "Georgia" },
   abaAtiva: { background: C.azulEscuro, color: "white", borderColor: C.azulEscuro },
-  formCard: { background: "white", padding: 30, borderRadius: 8, width: "100%", maxWidth: 500, boxShadow: "0 10px 30px rgba(0,0,0,0.05)" },
+  divisor: { display: "flex", alignItems: "center", gap: 15, marginBottom: 40 },
+  divisorLinha: { width: 60, height: 1, background: C.azulClaro },
+  formCard: { background: "white", padding: "40px", borderRadius: 4, width: "100%", maxWidth: 500, boxShadow: "0 15px 50px rgba(66,86,123,.1)", textAlign: "center" },
   campo: { marginBottom: 20, textAlign: "left" },
-  label: { display: "block", fontSize: 11, textTransform: "uppercase", marginBottom: 8, color: C.azulMedio },
-  input: { width: "100%", padding: 12, border: "1px solid #ddd", borderRadius: 4, background: C.fundo },
+  label: { display: "block", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: C.azulMedio, marginBottom: 8 },
+  input: { width: "100%", padding: 12, background: C.fundo, border: "1px solid rgba(181,194,213,.5)", borderRadius: 2, boxSizing: "border-box" },
   inputErro: { borderColor: "#c04" },
   opcoes: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 },
-  opcao: { padding: 12, border: "1px solid #ddd", background: C.fundo, cursor: "pointer" },
+  opcao: { padding: 12, border: "1px solid #b5c2d5", background: C.fundo, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 },
   opcaoAtiva: { background: C.azulEscuro, color: "white" },
-  btnEnviar: { width: "100%", padding: 15, background: C.azulEscuro, color: "white", border: "none", cursor: "pointer", textTransform: "uppercase", letterSpacing: 2 },
-  sucessoWrap: { textAlign: "center" },
-  sucessoIcone: { fontSize: 30, marginBottom: 15 },
-  sucessoTitulo: { color: C.azulEscuro },
-  sucessoTexto: { color: C.suave },
-  resumoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 20 },
+  btnEnviar: { width: "100%", padding: 16, background: C.azulEscuro, color: "white", border: "none", cursor: "pointer", letterSpacing: 3, textTransform: "uppercase", fontSize: 11, marginTop: 10 },
+  sucessoWrap: { padding: "20px 0" },
+  sucessoIcone: { width: 60, height: 60, borderRadius: "50%", background: "rgba(181,194,213,.2)", margin: "0 auto 20px", display: "flex", alignItems: "center", justifyContent: "center", color: C.azulEscuro },
+  sucessoTitulo: { color: C.azulEscuro, fontWeight: 300 },
+  sucessoTexto: { color: C.suave, fontSize: 14, lineHeight: 1.6 },
+  resumoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 30 },
   resumoCard: { background: C.fundo, padding: 15, borderRadius: 4 },
-  resumoNum: { fontSize: 24, display: "block" },
-  resumoLabel: { fontSize: 9, textTransform: "uppercase" },
-  filtros: { display: "flex", gap: 5, marginBottom: 15 },
-  filtroBtn: { padding: "5px 10px", fontSize: 11, border: "1px solid #ddd", cursor: "pointer" },
+  resumoNum: { fontSize: 28, display: "block", color: C.azulEscuro },
+  resumoLabel: { fontSize: 9, color: C.suave, textTransform: "uppercase" },
+  filtros: { display: "flex", gap: 10, marginBottom: 20 },
+  filtroBtn: { padding: "6px 12px", border: "1px solid #ddd", background: "none", cursor: "pointer", fontSize: 10 },
   filtroBtnAtivo: { background: C.azulEscuro, color: "white" },
   listaAdmin: { textAlign: "left" },
-  itemAdmin: { padding: 15, borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between" },
+  itemAdmin: { padding: "15px 0", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
   itemNome: { fontWeight: "bold", color: C.texto },
-  itemMeta: { fontSize: 10, color: C.suave },
-  itemMsg: { fontSize: 12, fontStyle: "italic", color: C.azulMedio },
-  btnRemover: { background: "none", border: "none", cursor: "pointer", color: "#ccc" },
-  footer: { padding: 40, background: C.azulEscuro, color: "white", textAlign: "center", fontSize: 11, letterSpacing: 2 }
+  itemMeta: { fontSize: 10, color: C.suave, marginTop: 2 },
+  itemMsg: { fontSize: 12, fontStyle: "italic", color: C.azulMedio, marginTop: 5 },
+  btnRemover: { background: "none", border: "none", color: "#ccc", cursor: "pointer" },
+  footer: { padding: "40px 20px", background: C.azulEscuro, color: "rgba(255,255,255,0.6)", textAlign: "center", fontSize: 11, lineHeight: 1.8, letterSpacing: 1 }
 };
+
+
